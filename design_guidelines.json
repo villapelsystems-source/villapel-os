@@ -1,0 +1,97 @@
+{
+  "theme": "Dark",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "colors": {
+    "background": "#09090B",
+    "surface": "#121214",
+    "surface_hover": "#1A1A1D",
+    "border": "rgba(255, 255, 255, 0.1)",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "rgba(255, 255, 255, 0.6)",
+    "accent_primary": "#2563EB",
+    "accent_hover": "#1D4ED8",
+    "accent_subtle": "rgba(37, 99, 235, 0.1)",
+    "success": "#10B981",
+    "warning": "#F59E0B",
+    "danger": "#EF4444"
+  },
+  "typography": {
+    "headings": {
+      "family": "Manrope, sans-serif",
+      "weights": ["400", "600", "800"],
+      "tracking": "tracking-tight"
+    },
+    "body": {
+      "family": "IBM Plex Sans, sans-serif",
+      "weights": ["400", "500"]
+    },
+    "scale": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl",
+      "h3": "text-xl sm:text-2xl",
+      "h4": "text-lg sm:text-xl",
+      "body": "text-base",
+      "small": "text-sm",
+      "tiny": "text-xs"
+    }
+  },
+  "layout": {
+    "strategy": "MODE B: THE CONTROL ROOM GRID",
+    "spacing": {
+      "containers": "p-6 sm:p-8",
+      "gap": "gap-4 sm:gap-6",
+      "page_padding": "p-4 sm:p-6 lg:p-8"
+    },
+    "borderRadius": "rounded-lg"
+  },
+  "surfaces": {
+    "cards": "bg-[#121214] border border-white/10 shadow-sm",
+    "headers": "bg-[#09090B]/80 backdrop-blur-xl border-b border-white/10 z-50 sticky top-0",
+    "sidebar": "bg-[#09090B] border-r border-white/10"
+  },
+  "motion": {
+    "hover": "transition-colors duration-200 ease-in-out",
+    "active": "active:scale-[0.98]",
+    "focus": "focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 focus:ring-offset-[#09090B]"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-md px-4 py-2 font-medium tracking-wide transition-all",
+      "secondary": "bg-[#1A1A1D] text-white border border-white/10 hover:bg-white/5 rounded-md px-4 py-2 font-medium transition-all"
+    },
+    "inputs": {
+      "base": "bg-[#121214] border border-white/10 rounded-md px-3 py-2 text-white placeholder:text-white/40 focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-colors"
+    },
+    "badges": {
+      "base": "px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#2563EB]/10 text-[#2563EB] border border-[#2563EB]/20"
+    },
+    "tables": {
+      "container": "w-full overflow-x-auto rounded-lg border border-white/10",
+      "header": "bg-[#121214] border-b border-white/10 text-xs uppercase tracking-wider text-white/60",
+      "row": "border-b border-white/5 hover:bg-white/5 transition-colors",
+      "cell": "px-4 py-3 text-sm text-white/80"
+    }
+  },
+  "icons": {
+    "library": "lucide-react",
+    "instructions": "Use lucide-react icons. Standard size 20px (w-5 h-5) for general UI, 16px (w-4 h-4) for dense data/buttons."
+  },
+  "accessibility": {
+    "testing": "All interactive and key informational elements MUST include a 'data-testid' attribute (e.g., data-testid='login-button', data-testid='metric-card-leads', data-testid='sidebar-nav-crm')",
+    "contrast": "Ensure text contrast meets APCA/WCAG AA standards. Text on dark backgrounds must be sufficiently light."
+  },
+  "instructions_to_main_agent": [
+    "App must be implemented in JavaScript (.js/.jsx) with React.",
+    "Use standard HTML tags and Tailwind CSS for layouts. Avoid overusing Shadcn layout primitives like Card, instead use semantic HTML with bento-grid utility classes.",
+    "Apply Shadcn for complex interactions like Dialog, DropdownMenu, Tabs, Select, and Calendar.",
+    "App Layout: Implement a main Sidebar navigation (collapsible on mobile via a hamburger icon) and a sticky Topbar for user profile/global actions.",
+    "Dashboard grid logic: Apply MODE B (The Control Room Grid). Use grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-4 or gap-6. Make widgets span 1 to 3 columns based on importance.",
+    "Include Manrope (Headings) and IBM Plex Sans (Body) fonts. Include via Google Fonts in index.html.",
+    "Primary brand color is Blue (#2563EB), use it for primary CTA buttons, active states, and key highlights.",
+    "No logo needed yet, use clean text 'Villapel OS' in the sidebar header with font-black or font-extrabold.",
+    "Never use purple or teal. Stick to high-contrast monochrome with blue accents."
+  ],
+  "media": {
+    "image_urls": {}
+  }
+}
