@@ -340,7 +340,7 @@ app.get('/api/leads/search', asyncHandler(async (req, res) => {
   const { existingLead: lead, matchedOn } = await findLeadByIdentifiers(db, phone, instagram_handle, facebook_page);
   if (!lead) return res.status(404).json({ success: false, error: 'Lead not found' });
   delete lead._id;
-  res.json({ success: true, matched_on: matchedOn, lead });
+  res.json({ success: true, id: lead.id, matched_on: matchedOn, lead });
 }));
 
 app.post('/api/tasks/create', asyncHandler(async (req, res) => {
@@ -367,7 +367,7 @@ app.post('/api/tasks/create', asyncHandler(async (req, res) => {
   const activity = lead.activity || [];
   activity.push(addActivity(leadId, 'task_created', `Task: ${title}`));
   await db.collection('leads').updateOne({ id: leadId }, { $set: { activity, updated_at: ts } });
-  res.json({ success: true, task_id: taskId, lead_id: leadId });
+  res.json({ success: true, task_id: taskId, lead_id: leadId, task_type: taskType });
 }));
 
 app.post('/api/bookings/create-or-update', asyncHandler(async (req, res) => {
