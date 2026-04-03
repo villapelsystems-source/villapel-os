@@ -351,8 +351,8 @@ app.post('/api/tasks/create', asyncHandler(async (req, res) => {
   if (!leadId) return res.status(400).json({ success: false, error: 'lead_id is required' });
   const lead = await db.collection('leads').findOne({ id: leadId });
   if (!lead) return res.status(400).json({ success: false, error: `Lead not found: ${leadId}` });
-  const title = cleanStr(data.title);
-  if (!title) return res.status(400).json({ success: false, error: 'title is required' });
+  const title = cleanStr(data.title) || {send_follow_up:'Follow Up Task',follow_up:'Follow Up Task',reactivation:'Reactivation Task',booking_followup:'Booking Follow Up'}[cleanStr(data.task_type)||''] || (cleanStr(data.task_type) ? cleanStr(data.task_type).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'General Task');
+
   const ts = now();
   const tomorrow = new Date(Date.now() + 86400000).toISOString();
   const taskId = uuid();
