@@ -367,7 +367,7 @@ app.post('/api/tasks/create', asyncHandler(async (req, res) => {
   const activity = lead.activity || [];
   activity.push(addActivity(leadId, 'task_created', `Task: ${title}`));
   await db.collection('leads').updateOne({ id: leadId }, { $set: { activity, updated_at: ts } });
-  res.json({ success: true, task_id: taskId, lead_id: leadId, task_type: taskType });
+  res.json({ success: true, task_id: taskId, lead_id: leadId, task_type: taskDoc.task_type });
 }));
 
 app.post('/api/bookings/create-or-update', asyncHandler(async (req, res) => {
