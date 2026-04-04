@@ -130,12 +130,14 @@ async function seedAdmin() {
   _seeded = true;
   const db = getDb();
   const email = (process.env.ADMIN_EMAIL || 'admin@villapel.com').toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || 'VillapelAdmin2024!';
+  const hash = await bcrypt.hash(password, 10);
   const snap = await db.collection('users').where('email', '==', email).limit(1).get();
   if (snap.empty) {
-    const password = process.env.ADMIN_PASSWORD || 'VillapelAdmin2024!';
-    const hash = await bcrypt.hash(password, 10);
     const id = uuid();
     await db.collection('users').doc(id).set({ id, email, password_hash: hash, name: 'Admin', role: 'admin', created_at: now() });
+  } else {
+    await db.collection('users').doc(snap.docs[0].id).update({ password_hash: hash });
   }
 }
 
