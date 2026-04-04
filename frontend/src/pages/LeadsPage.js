@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
+import DeleteIconButton from '../components/DeleteIconButton';
+import { useToast } from '../lib/ToastContext';
 
 const STATUS_COLORS = {
   'New Lead': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -29,7 +32,10 @@ export default function LeadsPage() {
   const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ company_name: '', contact_name: '', phone: '', email: '', city: '', state: '', source_platform: 'Instagram', status: 'New Lead', priority: 'medium' });
+  const [confirmLead, setConfirmLead] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const limit = 25;
 
   const load = useCallback(async () => {
@@ -56,6 +62,22 @@ export default function LeadsPage() {
       setForm({ company_name: '', contact_name: '', phone: '', email: '', city: '', state: '', source_platform: 'Instagram', status: 'New Lead', priority: 'medium' });
       load();
     } catch {}
+  };
+
+  const confirmDeleteLead = async () => {
+    if (!confirmLead) return;
+    setDeleting(true);
+    try {
+      await api.deleteLead(confirmLead.id);
+      setLeads((prev) => prev.filter((l) => l.id !== confirmLead.id));
+      setTotal((t) => Math.max(0, t - 1));
+      setConfirmLead(null);
+      showToast('Lead eliminado correctamente');
+    } catch (e) {
+      showToast(e.message || 'No se pudo eliminar el lead', 'error');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -95,14 +117,14 @@ export default function LeadsPage() {
         <table className="w-full">
           <thead className="bg-surface border-b border-white/10">
             <tr>
-              {['Company', 'Contact', 'Phone', 'Platform', 'Status', 'Priority', 'City'].map(h => (
-                <th key={h} className="px-4 py-3 text-xs uppercase tracking-wider text-white/60 text-left font-medium">{h}</th>
+              {['Company', 'Contact', 'Phone', 'Platform', 'Status', 'Priority', 'City', ''].map(h => (
+                <th key={h || 'actions'} className="px-4 py-3 text-xs uppercase tracking-wider text-white/60 text-left font-medium">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {leads.map((l) => (
-              <tr key={l.id} onClick={() => navigate(`/leads/${l.id}`)} className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer">
+              <tr key={l.id} onClick={() => navigate(`/leads/${l.id}`)} className="group border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer">
                 <td className="px-4 py-3 text-sm font-medium">{l.company_name}</td>
                 <td className="px-4 py-3 text-sm text-white/80">{l.contact_name || '—'}</td>
                 <td className="px-4 py-3 text-sm text-white/60">{l.phone || '—'}</td>
@@ -110,10 +132,13 @@ export default function LeadsPage() {
                 <td className="px-4 py-3"><Badge status={l.status} /></td>
                 <td className="px-4 py-3 text-sm text-white/60 capitalize">{l.priority}</td>
                 <td className="px-4 py-3 text-sm text-white/60">{l.city ? `${l.city}, ${l.state || ''}` : '—'}</td>
+                <td className="px-4 py-3 w-px" onClick={(e) => e.stopPropagation()}>
+                  <DeleteIconButton label="Eliminar lead" onClick={() => setConfirmLead(l)} />
+                </td>
               </tr>
             ))}
             {leads.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-white/40 text-sm">No leads found</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-white/40 text-sm">No leads found</td></tr>
             )}
           </tbody>
         </table>
@@ -130,6 +155,20 @@ export default function LeadsPage() {
       </div>
 
       {/* Create Modal */}
+      <ConfirmModal
+        open={!!confirmLead}
+        title="Eliminar lead"
+        message={
+          confirmLead
+            ? `Se eliminará el lead «${confirmLead.company_name}» y de forma permanente todas las tareas, reservas y llamadas vinculadas a ese lead en la base de datos. Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmLabel="Eliminar"
+        loading={deleting}
+        onCancel={() => !deleting && setConfirmLead(null)}
+        onConfirm={confirmDeleteLead}
+      />
+
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowCreate(false)}>
           <form onSubmit={handleCreate} onClick={e => e.stopPropagation()} className="bg-surface border border-white/10 rounded-lg p-6 w-full max-w-md space-y-3 max-h-[90vh] overflow-y-auto">

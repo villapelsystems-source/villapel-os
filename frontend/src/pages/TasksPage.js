@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { Plus, Check, Circle } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
+import DeleteIconButton from '../components/DeleteIconButton';
+import { useToast } from '../lib/ToastContext';
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
   const [filter, setFilter] = useState('all');
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ lead_id: '', task_type: 'send_follow_up', title: '', description: '', due_date: '', priority: 'medium' });
+  const [confirmTask, setConfirmTask] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const { showToast } = useToast();
 
   const load = useCallback(async () => {
     const params = new URLSearchParams();
@@ -30,6 +36,21 @@ export default function TasksPage() {
     setShowCreate(false);
     setForm({ lead_id: '', task_type: 'send_follow_up', title: '', description: '', due_date: '', priority: 'medium' });
     load();
+  };
+
+  const confirmDeleteTask = async () => {
+    if (!confirmTask) return;
+    setDeleting(true);
+    try {
+      await api.deleteTask(confirmTask.id);
+      setTasks((prev) => prev.filter((x) => x.id !== confirmTask.id));
+      setConfirmTask(null);
+      showToast('Tarea eliminada');
+    } catch (e) {
+      showToast(e.message || 'No se pudo eliminar la tarea', 'error');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const now = new Date();
@@ -67,8 +88,8 @@ export default function TasksPage() {
 
       <div className="space-y-2">
         {filtered.map(t => (
-          <div key={t.id} className="bg-surface border border-white/10 rounded-lg px-4 py-3 flex items-start gap-3 hover:bg-white/5 transition-colors">
-            <button onClick={() => toggle(t)} className="mt-0.5">
+          <div key={t.id} className="group bg-surface border border-white/10 rounded-lg px-4 py-3 flex items-start gap-3 hover:bg-white/5 transition-colors">
+            <button type="button" onClick={() => toggle(t)} className="mt-0.5">
               {t.completed ? <Check size={18} className="text-green-400" /> : <Circle size={18} className="text-white/30" />}
             </button>
             <div className="flex-1 min-w-0">
@@ -81,10 +102,21 @@ export default function TasksPage() {
                 {t.auto_generated && <span className="text-accent">auto</span>}
               </div>
             </div>
+            <DeleteIconButton label="Eliminar tarea" className="mt-0.5" onClick={() => setConfirmTask(t)} />
           </div>
         ))}
         {filtered.length === 0 && <div className="text-center text-white/40 text-sm py-8">No tasks found</div>}
       </div>
+
+      <ConfirmModal
+        open={!!confirmTask}
+        title="Eliminar tarea"
+        message={confirmTask ? `Se eliminará la tarea «${confirmTask.title}». Esta acción no se puede deshacer.` : ''}
+        confirmLabel="Eliminar"
+        loading={deleting}
+        onCancel={() => !deleting && setConfirmTask(null)}
+        onConfirm={confirmDeleteTask}
+      />
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowCreate(false)}>

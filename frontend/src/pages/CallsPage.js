@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { Phone } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
+import DeleteIconButton from '../components/DeleteIconButton';
+import { useToast } from '../lib/ToastContext';
 
 const OUTCOME_STYLE = {
   answered: 'text-green-400',
@@ -14,6 +17,9 @@ export default function CallsPage() {
   const [calls, setCalls] = useState([]);
   const [outcomeFilter, setOutcomeFilter] = useState('');
   const [scoreFilter, setScoreFilter] = useState('');
+  const [confirmCall, setConfirmCall] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const { showToast } = useToast();
 
   const load = useCallback(async () => {
     const params = new URLSearchParams();
@@ -25,6 +31,21 @@ export default function CallsPage() {
   }, [outcomeFilter, scoreFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  const confirmDeleteCall = async () => {
+    if (!confirmCall) return;
+    setDeleting(true);
+    try {
+      await api.deleteCall(confirmCall.id);
+      setCalls((prev) => prev.filter((c) => c.id !== confirmCall.id));
+      setConfirmCall(null);
+      showToast('Llamada eliminada');
+    } catch (e) {
+      showToast(e.message || 'No se pudo eliminar la llamada', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -45,21 +66,36 @@ export default function CallsPage() {
 
       <div className="space-y-2">
         {calls.map(c => (
-          <div key={c.id} className="bg-surface border border-white/10 rounded-lg px-4 py-3 flex items-center gap-4">
+          <div key={c.id} className="group bg-surface border border-white/10 rounded-lg px-4 py-3 flex items-center gap-4">
             <Phone size={18} className="text-accent shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium">{c.company_name || c.caller_phone}</div>
               <div className="text-xs text-white/40 mt-0.5">
-                {c.caller_phone} &middot; {new Date(c.call_date).toLocaleString()} &middot; {Math.floor(c.duration_seconds / 60)}m {c.duration_seconds % 60}s
+                {c.caller_phone} &middot; {new Date(c.call_date).toLocaleString()} &middot; {Math.floor((c.duration_seconds || 0) / 60)}m {(c.duration_seconds || 0) % 60}s
               </div>
               {c.transcript_summary && <div className="text-xs text-white/50 mt-1 line-clamp-2">{c.transcript_summary}</div>}
             </div>
             <span className={`text-xs font-medium capitalize ${OUTCOME_STYLE[c.outcome] || 'text-white/40'}`}>{c.outcome?.replace('_', ' ')}</span>
             <span className={`px-2 py-0.5 rounded-full text-xs border ${c.score === 'good' ? 'text-green-400 border-green-500/20 bg-green-500/10' : c.score === 'bad' ? 'text-red-400 border-red-500/20 bg-red-500/10' : 'text-white/40 border-white/10 bg-white/5'}`}>{c.score}</span>
+            <DeleteIconButton label="Eliminar llamada" onClick={() => setConfirmCall(c)} />
           </div>
         ))}
         {calls.length === 0 && <div className="text-center text-white/40 text-sm py-8">No calls found</div>}
       </div>
+
+      <ConfirmModal
+        open={!!confirmCall}
+        title="Eliminar llamada"
+        message={
+          confirmCall
+            ? `Se eliminará el registro de llamada del ${new Date(confirmCall.call_date).toLocaleString()} (${confirmCall.company_name || confirmCall.caller_phone || 'sin nombre'}). El lead en CRM no se borra.`
+            : ''
+        }
+        confirmLabel="Eliminar"
+        loading={deleting}
+        onCancel={() => !deleting && setConfirmCall(null)}
+        onConfirm={confirmDeleteCall}
+      />
     </div>
   );
 }

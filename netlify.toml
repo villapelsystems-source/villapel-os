@@ -1,0 +1,25 @@
+# Deploy desde la raíz del repo: el sitio vive en /frontend
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  base = "frontend"
+  command = "npm ci && npm run build"
+  # Rutas relativas al repo (no al base); el build genera frontend/build
+  publish = "frontend/build"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # En Netlify la API es la misma URL (redirect a la función). No hace falta REACT_APP_BACKEND_URL.
+
+[functions]
+  directory = "frontend/netlify/functions"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

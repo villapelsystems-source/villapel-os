@@ -1,5 +1,15 @@
 const API = process.env.REACT_APP_BACKEND_URL || '';
 
+function formatErrDetail(detail) {
+  if (detail == null) return '';
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((x) => (typeof x === 'object' && x != null ? x.msg || JSON.stringify(x) : String(x))).join(', ');
+  }
+  if (typeof detail === 'object') return detail.message || detail.error || JSON.stringify(detail);
+  return String(detail);
+}
+
 async function request(path, options = {}) {
   const res = await fetch(`${API}${path}`, {
     credentials: 'include',
@@ -7,7 +17,6 @@ async function request(path, options = {}) {
     ...options,
   });
   if (res.status === 401 && !path.includes('/auth/')) {
-    // Try refresh
     const refresh = await fetch(`${API}/api/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
@@ -18,7 +27,10 @@ async function request(path, options = {}) {
         headers: { 'Content-Type': 'application/json', ...options.headers },
         ...options,
       });
-      if (!retry.ok) throw new Error((await retry.json().catch(() => ({}))).detail || retry.statusText);
+      if (!retry.ok) {
+        const err = await retry.json().catch(() => ({}));
+        throw new Error(formatErrDetail(err.detail) || retry.statusText);
+      }
       return retry.json().catch(() => ({}));
     }
     window.location.href = '/login';
@@ -26,7 +38,7 @@ async function request(path, options = {}) {
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || res.statusText);
+    throw new Error(formatErrDetail(err.detail) || res.statusText);
   }
   return res.json().catch(() => ({}));
 }
@@ -38,6 +50,8 @@ export const api = {
   me: () => request('/api/auth/me'),
   // Dashboard
   metrics: () => request('/api/dashboard/metrics'),
+  // Day activity
+  getDayActivity: (date) => request(`/api/activity/day?date=${encodeURIComponent(date)}`),
   // Leads
   getLeads: (params = '') => request(`/api/leads${params ? '?' + params : ''}`),
   getLead: (id) => request(`/api/leads/${id}`),
@@ -54,9 +68,11 @@ export const api = {
   getBookings: (params = '') => request(`/api/bookings${params ? '?' + params : ''}`),
   createBooking: (data) => request('/api/bookings', { method: 'POST', body: JSON.stringify(data) }),
   updateBooking: (id, data) => request(`/api/bookings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteBooking: (id) => request(`/api/bookings/${id}`, { method: 'DELETE' }),
   // Calls
   getCalls: (params = '') => request(`/api/calls${params ? '?' + params : ''}`),
   createCall: (data) => request('/api/calls', { method: 'POST', body: JSON.stringify(data) }),
+  deleteCall: (id) => request(`/api/calls/${id}`, { method: 'DELETE' }),
   // Outreach
   getInstagram: (params = '') => request(`/api/outreach/instagram${params ? '?' + params : ''}`),
   createInstagram: (data) => request('/api/outreach/instagram', { method: 'POST', body: JSON.stringify(data) }),

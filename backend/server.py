@@ -1648,10 +1648,17 @@ async def update_lead(lead_id: str, lead_data: LeadUpdate, request: Request):
 @api_router.delete("/leads/{lead_id}")
 async def delete_lead(lead_id: str, request: Request):
     await get_current_user(request)
-    result = await db.leads.delete_one({"id": lead_id})
-    if result.deleted_count == 0:
+    lead = await db.leads.find_one({"id": lead_id})
+    if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
-    return {"message": "Lead deleted"}
+    tr = await db.tasks.delete_many({"lead_id": lead_id})
+    br = await db.bookings.delete_many({"lead_id": lead_id})
+    cr = await db.calls.delete_many({"lead_id": lead_id})
+    await db.leads.delete_one({"id": lead_id})
+    return {
+        "message": "Lead deleted",
+        "cascaded": {"tasks": tr.deleted_count, "bookings": br.deleted_count, "calls": cr.deleted_count},
+    }
 
 @api_router.post("/leads/{lead_id}/notes")
 async def add_lead_note(lead_id: str, note_data: NoteCreate, request: Request):
@@ -1830,6 +1837,15 @@ async def update_call(call_id: str, data: dict, request: Request):
     call = await db.calls.find_one({"id": call_id}, {"_id": 0})
     return call
 
+
+@api_router.delete("/calls/{call_id}")
+async def delete_call(call_id: str, request: Request):
+    await get_current_user(request)
+    result = await db.calls.delete_one({"id": call_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Call not found")
+    return {"message": "Call deleted"}
+
 # ==================== TASKS ROUTES ====================
 
 @api_router.get("/tasks")
@@ -1916,6 +1932,15 @@ async def update_booking(booking_id: str, data: BookingUpdate, request: Request)
     booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     return booking
 
+
+@api_router.delete("/bookings/{booking_id}")
+async def delete_booking(booking_id: str, request: Request):
+    await get_current_user(request)
+    result = await db.bookings.delete_one({"id": booking_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return {"message": "Booking deleted"}
+
 # ==================== AUTOMATIONS ROUTES ====================
 
 @api_router.get("/automations")
@@ -1932,6 +1957,172 @@ async def update_automation(automation_id: str, data: dict, request: Request):
         raise HTTPException(status_code=404, detail="Automation not found")
     automation = await db.automations.find_one({"id": automation_id}, {"_id": 0})
     return automation
+
+# ==================== DAY ACTIVITY ====================
+
+def _utc_day_bounds(date_str: str):
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        return None
+    start_naive = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    start = start_naive.isoformat().replace("+00:00", "Z")
+    next_start = (start_naive + timedelta(days=1)).isoformat().replace("+00:00", "Z")
+    return start, next_start
+
+
+@api_router.get("/activity/day")
+async def get_activity_day(request: Request, date: str):
+    await get_current_user(request)
+    bounds = _utc_day_bounds(date)
+    if not bounds:
+        raise HTTPException(status_code=400, detail="Invalid date: use YYYY-MM-DD")
+    start, next_start = bounds
+
+    def _ts(val):
+        if val is None:
+            return 0.0
+        if isinstance(val, datetime):
+            return val.timestamp()
+        s = str(val).replace("Z", "+00:00")
+        try:
+            return datetime.fromisoformat(s).timestamp()
+        except ValueError:
+            return 0.0
+
+    items = []
+
+    leads_created = await db.leads.find(
+        {"created_at": {"$gte": start, "$lt": next_start}}, {"_id": 0}
+    ).to_list(500)
+    for l in leads_created:
+        notes = str(l.get("notes") or "")
+        label = " · ".join(x for x in [l.get("company_name"), l.get("contact_name")] if x) or "Lead"
+        items.append({
+            "id": f"lead-created-{l['id']}",
+            "kind": "lead",
+            "activity_subtype": "created",
+            "at": l["created_at"],
+            "entity_id": l["id"],
+            "lead_id": l["id"],
+            "contact_label": label,
+            "platform": l.get("source_platform") or "—",
+            "status": l.get("status") or "—",
+            "summary": notes[:160],
+            "detail_route": f"/leads/{l['id']}",
+        })
+
+    leads_touched = await db.leads.find(
+        {"updated_at": {"$gte": start, "$lt": next_start}}, {"_id": 0}
+    ).to_list(500)
+
+    for l in leads_touched:
+        u = l.get("updated_at")
+        c = l.get("created_at")
+        if not u:
+            continue
+        if _ts(u) <= _ts(c):
+            continue
+        label = " · ".join(x for x in [l.get("company_name"), l.get("contact_name")] if x) or "Lead"
+        notes = str(l.get("notes") or "")
+        items.append({
+            "id": f"lead-updated-{l['id']}-{u}",
+            "kind": "lead",
+            "activity_subtype": "updated",
+            "at": u,
+            "entity_id": l["id"],
+            "lead_id": l["id"],
+            "contact_label": label,
+            "platform": l.get("source_platform") or "—",
+            "status": l.get("status") or "—",
+            "summary": notes[:160],
+            "detail_route": f"/leads/{l['id']}",
+        })
+
+    calls = await db.calls.find(
+        {"call_date": {"$gte": start, "$lt": next_start}}, {"_id": 0}
+    ).to_list(500)
+    for c in calls:
+        label = c.get("company_name") or c.get("caller_phone") or "Call"
+        summ = str(c.get("transcript_summary") or c.get("notes") or "")[:160]
+        oc = c.get("outcome") or "call"
+        items.append({
+            "id": f"call-{c['id']}",
+            "kind": "call",
+            "activity_subtype": oc,
+            "at": c["call_date"],
+            "entity_id": c["id"],
+            "lead_id": c.get("lead_id"),
+            "contact_label": label,
+            "platform": "Phone" if c.get("caller_phone") else "—",
+            "status": str(oc).replace("_", " ") if oc else "—",
+            "summary": summ,
+            "detail_route": "/calls",
+        })
+
+    bookings = await db.bookings.find(
+        {"booking_date": {"$gte": start, "$lt": next_start}}, {"_id": 0}
+    ).to_list(500)
+    for b in bookings:
+        lid = b.get("lead_id")
+        items.append({
+            "id": f"booking-{b['id']}",
+            "kind": "booking",
+            "activity_subtype": b.get("meeting_status") or "scheduled",
+            "at": b["booking_date"],
+            "entity_id": b["id"],
+            "lead_id": lid,
+            "contact_label": f"Lead {str(lid)[:8]}…" if lid else "Booking",
+            "platform": b.get("source") or b.get("booking_source") or "—",
+            "status": b.get("meeting_status") or "—",
+            "summary": str(b.get("notes") or "")[:160],
+            "detail_route": "/bookings",
+        })
+
+    tasks = await db.tasks.find(
+        {"due_date": {"$gte": start, "$lt": next_start}}, {"_id": 0}
+    ).to_list(500)
+    for t in tasks:
+        title = str(t.get("title") or "Task")
+        desc = str(t.get("description") or "")
+        lid = t.get("lead_id")
+        items.append({
+            "id": f"task-{t['id']}",
+            "kind": "task",
+            "activity_subtype": t.get("task_type") or "task",
+            "at": t["due_date"],
+            "entity_id": t["id"],
+            "lead_id": lid,
+            "contact_label": title,
+            "platform": t.get("channel") or "—",
+            "status": "Completed" if t.get("completed") else "Open",
+            "summary": (desc or title)[:160],
+            "detail_route": f"/leads/{lid}" if lid else "/tasks",
+        })
+
+    lead_ids = list({i["lead_id"] for i in items if i.get("lead_id")})
+    lead_map = {}
+    if lead_ids:
+        cursor = db.leads.find({"id": {"$in": lead_ids}}, {"_id": 0, "id": 1, "company_name": 1, "contact_name": 1})
+        async for row in cursor:
+            lead_map[row["id"]] = row
+
+    for it in items:
+        lid = it.get("lead_id")
+        if not lid or lid not in lead_map:
+            continue
+        if it["kind"] not in ("booking", "call", "task"):
+            continue
+        L = lead_map[lid]
+        cl = " · ".join(x for x in [L.get("company_name"), L.get("contact_name")] if x)
+        if not cl:
+            continue
+        if it["kind"] == "task":
+            task_title = it["contact_label"]
+            it["summary"] = " — ".join(x for x in [task_title, it["summary"]] if x)[:160]
+        it["contact_label"] = cl
+
+    items.sort(key=lambda x: _ts(x.get("at")))
+    return {"date": date, "items": items}
+
 
 # ==================== METRICS/DASHBOARD ROUTES ====================
 

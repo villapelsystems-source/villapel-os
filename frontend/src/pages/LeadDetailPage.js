@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2, Send } from 'lucide-react';
+import { ArrowLeft, Send } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
+import DeleteIconButton from '../components/DeleteIconButton';
+import { useToast } from '../lib/ToastContext';
 
 const STATUSES = ['New Lead', 'Contacted', 'Replied', 'Interested', 'Qualified', 'Booked', 'No Response', 'Not Interested', 'Closed Won', 'Closed Lost'];
 
@@ -12,6 +15,9 @@ export default function LeadDetailPage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({});
   const [note, setNote] = useState('');
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { showToast } = useToast();
 
   const load = useCallback(async () => {
     try {
@@ -32,9 +38,17 @@ export default function LeadDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this lead?')) return;
-    await api.deleteLead(id);
-    navigate('/leads');
+    setDeleting(true);
+    try {
+      await api.deleteLead(id);
+      showToast('Lead eliminado');
+      navigate('/leads');
+    } catch (e) {
+      showToast(e.message || 'No se pudo eliminar', 'error');
+    } finally {
+      setDeleting(false);
+      setShowDelete(false);
+    }
   };
 
   const handleNote = async (e) => {
@@ -61,11 +75,23 @@ export default function LeadDetailPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/leads')} className="p-1 rounded hover:bg-white/10"><ArrowLeft size={20} /></button>
-        <h1 className="font-heading font-bold text-2xl tracking-tight flex-1">{lead.company_name}</h1>
-        <button onClick={handleDelete} className="p-2 rounded hover:bg-red-500/10 text-red-400"><Trash2 size={18} /></button>
+      <div className="group flex items-center gap-3">
+        <button type="button" onClick={() => navigate('/leads')} className="p-1 rounded hover:bg-white/10">
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="font-heading font-bold text-2xl tracking-tight flex-1 min-w-0 truncate">{lead.company_name}</h1>
+        <DeleteIconButton label="Eliminar lead" onClick={() => setShowDelete(true)} />
       </div>
+
+      <ConfirmModal
+        open={showDelete}
+        title="Eliminar lead"
+        message={`Se eliminará «${lead.company_name}» y todas las tareas, reservas y llamadas vinculadas a este lead. Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        loading={deleting}
+        onCancel={() => !deleting && setShowDelete(false)}
+        onConfirm={handleDelete}
+      />
 
       {/* Status */}
       <div className="flex items-center gap-3">

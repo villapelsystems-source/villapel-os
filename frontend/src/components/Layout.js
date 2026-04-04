@@ -3,11 +3,12 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import {
   LayoutDashboard, Users, CheckSquare, Calendar, Phone, Send,
-  MessageSquare, Zap, Settings, LogOut, Menu, X
+  MessageSquare, Zap, Settings, LogOut, Menu, X, CalendarDays,
 } from 'lucide-react';
 
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/daily', icon: CalendarDays, label: 'Daily' },
   { to: '/leads', icon: Users, label: 'CRM' },
   { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { to: '/bookings', icon: Calendar, label: 'Bookings' },
