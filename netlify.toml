@@ -4,21 +4,34 @@
 [build]
   base = "frontend"
   command = "npm ci && npm run build"
-  # Rutas relativas al repo (no al base); el build genera frontend/build
   publish = "frontend/build"
 
 [build.environment]
   NODE_VERSION = "20"
-  # En Netlify la API es la misma URL (redirect a la función). No hace falta REACT_APP_BACKEND_URL.
 
+# Funciones en frontend/netlify/functions (api.js = Express + Firestore; leads*.js = JSON temporal)
 [functions]
   directory = "frontend/netlify/functions"
 
+# JSON test API (Make.com puede usar /.netlify/functions/leads-intake directo)
+# No usamos /api/* -> :splat porque rompería /api/auth/*, /api/leads/:id, /api/dashboard/metrics, etc.
+[[redirects]]
+  from = "/api/json/leads"
+  to = "/.netlify/functions/leads"
+  status = 200
+
+[[redirects]]
+  from = "/api/json/metrics"
+  to = "/.netlify/functions/metrics"
+  status = 200
+
+# App principal (JWT, Firestore, CRM)
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api"
   status = 200
 
+# SPA (después de API)
 [[redirects]]
   from = "/*"
   to = "/index.html"
