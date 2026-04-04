@@ -1,4 +1,4 @@
-const { readLeads } = require('./_leadsStore');
+const { getDb } = require('./_firestore');
 
 function json(statusCode, body) {
   return {
@@ -14,14 +14,13 @@ exports.handler = async (event) => {
   }
 
   try {
-    const leads = await readLeads();
+    const db = getDb();
+    const snap = await db.collection('leads').get();
+    const leads = snap.docs.map((d) => d.data());
     const totalLeads = leads.length;
-    const replied = leads.filter((l) => (l.status || '').toLowerCase() === 'replied').length;
-    const booked = leads.filter((l) => (l.status || '').toLowerCase() === 'booked').length;
-    const closed = leads.filter((l) => {
-      const s = (l.status || '').toLowerCase();
-      return s === 'closed won' || s === 'closed lost' || s === 'closed';
-    }).length;
+    const replied = leads.filter((l) => l.status === 'Replied').length;
+    const booked = leads.filter((l) => l.status === 'Booked').length;
+    const closed = leads.filter((l) => l.status === 'Closed Won' || l.status === 'Closed Lost').length;
 
     return json(200, {
       success: true,

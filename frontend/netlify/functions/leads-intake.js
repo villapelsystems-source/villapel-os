@@ -1,7 +1,4 @@
-const crypto = require('crypto');
-const { appendLead } = require('./_leadsStore');
-
-const uuid = () => crypto.randomUUID();
+const { intakeLeadFromBody } = require('./_leadIntakeShared');
 
 function json(statusCode, body, extraHeaders = {}) {
   return {
@@ -51,34 +48,12 @@ exports.handler = async (event) => {
     return json(400, { success: false, error: 'Invalid JSON body' }, corsHeaders(origin));
   }
 
-  const clean = (v) => {
-    if (v == null) return null;
-    const s = String(v).trim();
-    return s || null;
-  };
-
-  const lead = {
-    id: uuid(),
-    company_name: clean(body.company_name),
-    contact_name: clean(body.contact_name),
-    phone: clean(body.phone),
-    city: clean(body.city),
-    state: clean(body.state),
-    status: clean(body.status) || 'New Lead',
-    source_platform: clean(body.source_platform) || 'Other',
-    notes: clean(body.notes),
-    created_at: new Date().toISOString(),
-  };
-
-  if (!lead.company_name) {
-    return json(400, { success: false, error: 'company_name is required' }, corsHeaders(origin));
-  }
-
   try {
-    await appendLead(lead);
-    return json(200, { success: true, lead }, corsHeaders(origin));
+    const { statusCode, json: out } = await intakeLeadFromBody(body);
+    return json(statusCode, out, corsHeaders(origin));
   } catch (err) {
     console.error('leads-intake', err);
-    return json(500, { success: false, error: 'Failed to save lead' }, corsHeaders(origin));
+    const msg = err.message && String(err.message).includes('FIREBASE') ? 'Database configuration error' : 'Failed to save lead';
+    return json(500, { success: false, error: msg }, corsHeaders(origin));
   }
 };

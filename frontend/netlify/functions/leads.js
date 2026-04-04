@@ -1,4 +1,4 @@
-const { readLeads } = require('./_leadsStore');
+const { getDb } = require('./_firestore');
 
 function json(statusCode, body) {
   return {
@@ -14,7 +14,9 @@ exports.handler = async (event) => {
   }
 
   try {
-    const leads = await readLeads();
+    const db = getDb();
+    const snap = await db.collection('leads').get();
+    const leads = snap.docs.map((d) => d.data());
     return json(200, { success: true, leads });
   } catch (err) {
     console.error('leads', err);
