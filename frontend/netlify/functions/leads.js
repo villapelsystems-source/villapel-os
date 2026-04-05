@@ -16,7 +16,7 @@ exports.handler = async (event) => {
   try {
     const db = getDb();
     const snap = await db.collection('leads').get();
-    const leads = snap.docs.map((d) => d.data());
+    const leads = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
     return json(200, { success: true, leads });
   } catch (err) {
     console.error('leads', err);

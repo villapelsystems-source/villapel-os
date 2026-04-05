@@ -2,7 +2,7 @@
 
 ## Overview
 **App Name:** Villapel OS  
-**Tagline:** AI-powered lead system for roofing businesses  
+**Tagline:** CRM y sistema de leads con IA para cualquier tipo de negocio  
 **Version:** 1.1.0 (MVP + Make.com Integration)  
 **Last Updated:** March 30, 2026
 
@@ -13,9 +13,9 @@
 ## Core Requirements (Static)
 
 ### Business Context
-- Agency sells AI receptionist services, websites, and automations to roofing companies in the U.S.
-- Main offer: AI receptionist that answers calls, qualifies leads, and helps book estimates
-- Outreach channels: Instagram (direct outreach) and Facebook Groups (community-based)
+- Pensado para agencias, equipos comerciales y negocios que gestionan leads en cualquier sector (retail, servicios, SaaS, salud, hostelería, etc.).
+- Casos de uso: recepción con IA, seguimiento de leads, citas/reuniones, integraciones (Make.com, Vapi, etc.).
+- Canales de prospección: Instagram (DM), Facebook Groups y otros vía integraciones.
 
 ### Technical Stack
 - Frontend: React 19 + Tailwind CSS + Shadcn/UI
@@ -62,7 +62,8 @@
 #### Calls Module
 - [x] Call logs
 - [x] Outcome filtering and scoring
-- [x] Placeholder for Retell AI integration
+- [x] Vapi (voice): webhooks + `vapi_call_id` on call logs; UI docs under Integraciones → Vapi; guía en `docs/GUIA_VAPI_Y_OPERACION.md`
+- [x] UI i18n: español por defecto, inglés secundario (`frontend/src/lib/i18n/`)
 
 #### Tasks / Follow-up System
 - [x] Task categories (overdue, today, upcoming, completed)
@@ -108,7 +109,7 @@
   - Auto-update lead status to "Booked"
   - Add booking note to lead
 - [x] POST /api/external/calls/log
-  - Log calls with Retell AI support
+  - Log calls with Vapi support
   - Auto-match leads by phone
   - Update lead status based on outcomes
 
@@ -132,7 +133,7 @@
 - [ ] Team member invite system
 
 ### P1 (Important)
-- [ ] Retell AI integration (AI voice calls)
+- [x] Vapi integration (AI voice calls — use Vapi + Make.com → `/api/external/calls/log`)
 - [ ] Make.com webhook integration
 - [ ] Google Calendar sync
 - [ ] Email sequence automation (Gmail)

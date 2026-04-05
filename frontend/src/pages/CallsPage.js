@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
+import { useLanguage } from '../lib/LanguageContext';
 import { Phone } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 import DeleteIconButton from '../components/DeleteIconButton';
@@ -13,7 +14,11 @@ const OUTCOME_STYLE = {
   callback_requested: 'text-purple-400',
 };
 
+const OUTCOMES = ['answered', 'voicemail', 'no_answer', 'callback_requested', 'booked'];
+const SCORES = ['good', 'average', 'bad'];
+
 export default function CallsPage() {
+  const { t } = useLanguage();
   const [calls, setCalls] = useState([]);
   const [outcomeFilter, setOutcomeFilter] = useState('');
   const [scoreFilter, setScoreFilter] = useState('');
@@ -30,7 +35,9 @@ export default function CallsPage() {
     setCalls(data.calls || []);
   }, [outcomeFilter, scoreFilter]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const confirmDeleteCall = async () => {
     if (!confirmCall) return;
@@ -39,9 +46,9 @@ export default function CallsPage() {
       await api.deleteCall(confirmCall.id);
       setCalls((prev) => prev.filter((c) => c.id !== confirmCall.id));
       setConfirmCall(null);
-      showToast('Llamada eliminada');
+      showToast(t('calls.deletedOk'));
     } catch (e) {
-      showToast(e.message || 'No se pudo eliminar la llamada', 'error');
+      showToast(e.message || t('calls.deleteErr'), 'error');
     } finally {
       setDeleting(false);
     }
@@ -49,49 +56,79 @@ export default function CallsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="font-heading font-bold text-2xl tracking-tight">Calls</h1>
+      <h1 className="font-heading font-bold text-2xl tracking-tight">{t('calls.title')}</h1>
 
       <div className="flex gap-3 flex-wrap">
-        <select value={outcomeFilter} onChange={e => setOutcomeFilter(e.target.value)}
-          className="bg-surface border border-white/10 rounded-md px-3 py-2 text-sm text-white/80">
-          <option value="">All Outcomes</option>
-          {['answered', 'voicemail', 'no_answer', 'callback_requested', 'booked'].map(o => <option key={o} value={o}>{o.replace('_', ' ')}</option>)}
+        <select
+          value={outcomeFilter}
+          onChange={(e) => setOutcomeFilter(e.target.value)}
+          className="bg-surface border border-white/10 rounded-md px-3 py-2 text-sm text-white/80"
+        >
+          <option value="">{t('calls.allOutcomes')}</option>
+          {OUTCOMES.map((o) => (
+            <option key={o} value={o}>
+              {t(`calls.outcome.${o}`)}
+            </option>
+          ))}
         </select>
-        <select value={scoreFilter} onChange={e => setScoreFilter(e.target.value)}
-          className="bg-surface border border-white/10 rounded-md px-3 py-2 text-sm text-white/80">
-          <option value="">All Scores</option>
-          {['good', 'average', 'bad'].map(s => <option key={s} value={s}>{s}</option>)}
+        <select
+          value={scoreFilter}
+          onChange={(e) => setScoreFilter(e.target.value)}
+          className="bg-surface border border-white/10 rounded-md px-3 py-2 text-sm text-white/80"
+        >
+          <option value="">{t('calls.allScores')}</option>
+          {SCORES.map((s) => (
+            <option key={s} value={s}>
+              {t(`calls.score.${s}`)}
+            </option>
+          ))}
         </select>
       </div>
 
       <div className="space-y-2">
-        {calls.map(c => (
+        {calls.map((c) => (
           <div key={c.id} className="group bg-surface border border-white/10 rounded-lg px-4 py-3 flex items-center gap-4">
             <Phone size={18} className="text-accent shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium">{c.company_name || c.caller_phone}</div>
               <div className="text-xs text-white/40 mt-0.5">
-                {c.caller_phone} &middot; {new Date(c.call_date).toLocaleString()} &middot; {Math.floor((c.duration_seconds || 0) / 60)}m {(c.duration_seconds || 0) % 60}s
+                {c.caller_phone} &middot; {new Date(c.call_date).toLocaleString()} &middot; {Math.floor((c.duration_seconds || 0) / 60)}m{' '}
+                {(c.duration_seconds || 0) % 60}s
               </div>
               {c.transcript_summary && <div className="text-xs text-white/50 mt-1 line-clamp-2">{c.transcript_summary}</div>}
             </div>
-            <span className={`text-xs font-medium capitalize ${OUTCOME_STYLE[c.outcome] || 'text-white/40'}`}>{c.outcome?.replace('_', ' ')}</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs border ${c.score === 'good' ? 'text-green-400 border-green-500/20 bg-green-500/10' : c.score === 'bad' ? 'text-red-400 border-red-500/20 bg-red-500/10' : 'text-white/40 border-white/10 bg-white/5'}`}>{c.score}</span>
-            <DeleteIconButton label="Eliminar llamada" onClick={() => setConfirmCall(c)} />
+            <span className={`text-xs font-medium ${OUTCOME_STYLE[c.outcome] || 'text-white/40'}`}>
+              {c.outcome ? t(`calls.outcome.${c.outcome}`) : '—'}
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs border ${
+                c.score === 'good'
+                  ? 'text-green-400 border-green-500/20 bg-green-500/10'
+                  : c.score === 'bad'
+                    ? 'text-red-400 border-red-500/20 bg-red-500/10'
+                    : 'text-white/40 border-white/10 bg-white/5'
+              }`}
+            >
+              {c.score ? t(`calls.score.${c.score}`) : '—'}
+            </span>
+            <DeleteIconButton label={t('calls.deleteTitle')} onClick={() => setConfirmCall(c)} />
           </div>
         ))}
-        {calls.length === 0 && <div className="text-center text-white/40 text-sm py-8">No calls found</div>}
+        {calls.length === 0 && <div className="text-center text-white/40 text-sm py-8">{t('calls.empty')}</div>}
       </div>
 
       <ConfirmModal
         open={!!confirmCall}
-        title="Eliminar llamada"
+        title={t('calls.deleteTitle')}
         message={
           confirmCall
-            ? `Se eliminará el registro de llamada del ${new Date(confirmCall.call_date).toLocaleString()} (${confirmCall.company_name || confirmCall.caller_phone || 'sin nombre'}). El lead en CRM no se borra.`
+            ? t('calls.deleteMsg', {
+                date: new Date(confirmCall.call_date).toLocaleString(),
+                label: confirmCall.company_name || confirmCall.caller_phone || t('calls.noName'),
+              })
             : ''
         }
-        confirmLabel="Eliminar"
+        confirmLabel={t('common.delete')}
         loading={deleting}
         onCancel={() => !deleting && setConfirmCall(null)}
         onConfirm={confirmDeleteCall}

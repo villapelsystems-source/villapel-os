@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../lib/LanguageContext';
 import { api } from '../lib/api';
 import { Users, MessageSquare, Calendar, Trophy, Phone, AlertTriangle } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -19,6 +20,7 @@ function KPI({ icon: Icon, label, value, sub, testId }) {
 }
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
   const [m, setM] = useState(null);
   const [err, setErr] = useState('');
 
@@ -27,28 +29,28 @@ export default function DashboardPage() {
   }, []);
 
   if (err) return <div className="text-red-400">{err}</div>;
-  if (!m) return <div className="text-white/40">Loading dashboard...</div>;
+  if (!m) return <div className="text-white/40">{t('app.loading')}</div>;
 
   const statusData = Object.entries(m.status_counts || {}).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value }));
   const platformData = Object.entries(m.platform_breakdown || {}).filter(([, v]) => v > 0).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1).replace('_', ' '), value }));
 
   return (
     <div className="space-y-6">
-      <h1 className="font-heading font-bold text-2xl tracking-tight">Dashboard</h1>
+      <h1 className="font-heading font-bold text-2xl tracking-tight">{t('dashboard.title')}</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <KPI icon={Users} label="Total Leads" value={m.leads?.total || 0} sub={`${m.leads?.new_today || 0} new today`} testId="metric-card-leads" />
-        <KPI icon={MessageSquare} label="Replied" value={m.leads?.replied || 0} testId="metric-card-replied" />
-        <KPI icon={Calendar} label="Booked Demos" value={m.leads?.booked || 0} testId="metric-card-booked" />
-        <KPI icon={Trophy} label="Closed Won" value={m.leads?.closed_won || 0} testId="metric-card-won" />
-        <KPI icon={Phone} label="Calls Made" value={m.calls?.total || 0} testId="metric-card-calls" />
-        <KPI icon={AlertTriangle} label="Tasks Overdue" value={m.tasks?.overdue || 0} sub={`${m.tasks?.due_today || 0} due today`} testId="metric-card-overdue" />
+        <KPI icon={Users} label={t('dashboard.kpi.totalLeads')} value={m.leads?.total || 0} sub={`${m.leads?.new_today || 0} ${t('dashboard.kpi.newToday')}`} testId="metric-card-leads" />
+        <KPI icon={MessageSquare} label={t('dashboard.kpi.replied')} value={m.leads?.replied || 0} testId="metric-card-replied" />
+        <KPI icon={Calendar} label={t('dashboard.kpi.booked')} value={m.leads?.booked || 0} testId="metric-card-booked" />
+        <KPI icon={Trophy} label={t('dashboard.kpi.closedWon')} value={m.leads?.closed_won || 0} testId="metric-card-won" />
+        <KPI icon={Phone} label={t('dashboard.kpi.calls')} value={m.calls?.total || 0} testId="metric-card-calls" />
+        <KPI icon={AlertTriangle} label={t('dashboard.kpi.overdue')} value={m.tasks?.overdue || 0} sub={`${m.tasks?.due_today || 0} ${t('dashboard.kpi.dueToday')}`} testId="metric-card-overdue" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Status Distribution */}
         <div className="lg:col-span-2 bg-surface border border-white/10 rounded-lg p-5">
-          <h3 className="font-heading font-semibold text-sm mb-4">Lead Status Distribution</h3>
+          <h3 className="font-heading font-semibold text-sm mb-4">{t('dashboard.chart.status')}</h3>
           {statusData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={statusData}>
@@ -58,12 +60,12 @@ export default function DashboardPage() {
                 <Bar dataKey="value" fill="#2563EB" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          ) : <div className="text-white/40 text-sm">No data</div>}
+          ) : <div className="text-white/40 text-sm">{t('dashboard.chart.noData')}</div>}
         </div>
 
         {/* Platform Breakdown */}
         <div className="bg-surface border border-white/10 rounded-lg p-5">
-          <h3 className="font-heading font-semibold text-sm mb-4">Platform Breakdown</h3>
+          <h3 className="font-heading font-semibold text-sm mb-4">{t('dashboard.chart.platform')}</h3>
           {platformData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -73,19 +75,19 @@ export default function DashboardPage() {
                 <Tooltip contentStyle={{ background: '#121214', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} />
               </PieChart>
             </ResponsiveContainer>
-          ) : <div className="text-white/40 text-sm">No data</div>}
+          ) : <div className="text-white/40 text-sm">{t('dashboard.chart.noData')}</div>}
         </div>
       </div>
 
       {/* Conversion Rates */}
       <div className="bg-surface border border-white/10 rounded-lg p-5">
-        <h3 className="font-heading font-semibold text-sm mb-4">Conversion Rates</h3>
+        <h3 className="font-heading font-semibold text-sm mb-4">{t('dashboard.conversion.title')}</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Contacted → Replied', val: m.conversion_rates?.contacted_to_replied },
-            { label: 'Replied → Interested', val: m.conversion_rates?.replied_to_interested },
-            { label: 'Interested → Booked', val: m.conversion_rates?.interested_to_booked },
-            { label: 'Booked → Closed', val: m.conversion_rates?.booked_to_closed },
+            { label: t('dashboard.conversion.cr1'), val: m.conversion_rates?.contacted_to_replied },
+            { label: t('dashboard.conversion.cr2'), val: m.conversion_rates?.replied_to_interested },
+            { label: t('dashboard.conversion.cr3'), val: m.conversion_rates?.interested_to_booked },
+            { label: t('dashboard.conversion.cr4'), val: m.conversion_rates?.booked_to_closed },
           ].map((r) => (
             <div key={r.label} className="text-center">
               <div className="text-xl font-heading font-bold text-accent">{r.val ?? 0}%</div>

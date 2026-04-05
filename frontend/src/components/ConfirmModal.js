@@ -1,16 +1,20 @@
 import React from 'react';
+import { useLanguage } from '../lib/LanguageContext';
 
 export default function ConfirmModal({
   open,
   title,
   message,
-  confirmLabel = 'Delete',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   danger = true,
   loading = false,
   onConfirm,
   onCancel,
 }) {
+  const { t } = useLanguage();
+  const cancelText = cancelLabel ?? t('common.cancel');
+  const confirmText = confirmLabel ?? t('common.delete');
   if (!open) return null;
   return (
     <div
@@ -36,7 +40,7 @@ export default function ConfirmModal({
             disabled={loading}
             className="flex-1 bg-white/5 border border-white/10 text-white rounded-md px-4 py-2 text-sm hover:bg-white/10 disabled:opacity-50"
           >
-            {cancelLabel}
+            {cancelText}
           </button>
           <button
             type="button"
@@ -46,7 +50,7 @@ export default function ConfirmModal({
               danger ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-accent text-white hover:bg-accent-hover'
             }`}
           >
-            {loading ? 'Please wait…' : confirmLabel}
+            {loading ? t('common.pleaseWait') : confirmText}
           </button>
         </div>
       </div>

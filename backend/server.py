@@ -106,7 +106,7 @@ async def clear_attempts(identifier: str):
     await db.login_attempts.delete_one({"identifier": identifier})
 
 # Create the main app
-app = FastAPI(title="Villapel OS API")
+app = FastAPI(title="Villapel OS API", description="CRM and lead ops API for any business vertical")
 
 # Create router with /api prefix
 api_router = APIRouter(prefix="/api")
@@ -250,7 +250,7 @@ class APIKeyCreate(BaseModel):
     permissions: List[str] = ["leads:write", "tasks:write", "bookings:write", "calls:write"]
 
 class ExternalLeadIntake(BaseModel):
-    source: str  # "clawbot", "manual", "calcom", "retell"
+    source: str  # "clawbot", "manual", "calcom", "vapi"
     channel: str  # "instagram", "facebook_group", "facebook_dm", "phone", "website", "referral"
     company_name: str
     contact_name: Optional[str] = None
@@ -287,7 +287,7 @@ class ExternalBookingCreate(BaseModel):
     lead_id: str
     booking_source: str  # "calcom", "manual", "clawbot"
     booking_date: str
-    booking_type: Optional[str] = "demo"
+    booking_type: Optional[str] = "meeting"
     calcom_event_id: Optional[str] = None
     meeting_url: Optional[str] = None
     notes: Optional[str] = None
@@ -302,7 +302,7 @@ class ExternalCallLog(BaseModel):
     booked: Optional[bool] = False
     transcript_summary: Optional[str] = None
     recording_url: Optional[str] = None
-    retell_call_id: Optional[str] = None
+    vapi_call_id: Optional[str] = None
     notes: Optional[str] = None
 
 # ==================== UTILITY FUNCTIONS ====================
@@ -763,7 +763,7 @@ async def bookings_create_or_update(request: Request):
             "booking_date": booking_date,
             "booking_source": booking_source,
             "source": booking_source,
-            "booking_type": clean_string(data.get("booking_type")) or "demo",
+            "booking_type": clean_string(data.get("booking_type")) or "meeting",
             "meeting_status": status,
             "calcom_event_id": clean_string(data.get("calcom_event_id")),
             "meeting_url": clean_string(data.get("meeting_url")),
@@ -1398,7 +1398,7 @@ async def external_booking_create_or_update(data: ExternalBookingCreate, request
 
 @api_router.post("/external/calls/log", status_code=201)
 async def external_call_log(data: ExternalCallLog, request: Request):
-    """Log a call from Retell AI via Make.com"""
+    """Log a call from Vapi (voice AI) via Make.com or middleware"""
     api_key = await validate_api_key(request, "calls:write")
     
     try:
@@ -1427,7 +1427,7 @@ async def external_call_log(data: ExternalCallLog, request: Request):
             "booked": data.booked or False,
             "transcript_summary": data.transcript_summary,
             "recording_url": data.recording_url,
-            "retell_call_id": data.retell_call_id,
+            "vapi_call_id": data.vapi_call_id,
             "notes": data.notes,
             "score": "good" if data.booked else ("average" if data.qualified else "average"),
             "created_at": now
@@ -2366,7 +2366,7 @@ async def seed_demo_data():
         logger.info("Demo data already exists, skipping seed")
         return
     
-    # US cities and states for roofing companies
+    # Sample cities/states for demo leads (any industry)
     locations = [
         ("Houston", "TX"), ("Dallas", "TX"), ("Austin", "TX"), ("San Antonio", "TX"), ("Fort Worth", "TX"),
         ("Phoenix", "AZ"), ("Tucson", "AZ"), ("Mesa", "AZ"), ("Scottsdale", "AZ"),
@@ -2388,13 +2388,18 @@ async def seed_demo_data():
         ("Wichita", "KS"), ("Overland Park", "KS")
     ]
     
-    roofing_names = [
-        "Elite", "Premier", "Summit", "Peak", "Crown", "Royal", "Apex", "Legacy", "Heritage", "Titan",
-        "Precision", "Quality", "American", "National", "Superior", "Pro", "Expert", "Master", "Reliable", "Trusted",
-        "First Choice", "Top Notch", "All Star", "Five Star", "Golden", "Silver", "Diamond", "Platinum", "Eagle", "Hawk"
+    business_prefixes = [
+        "Nova", "Prime", "Summit", "Urban", "Bright", "Atlas", "Meridian", "Catalyst", "Zenith", "Pulse",
+        "Elite", "Vital", "Nexus", "Vertex", "Aurora", "Keystone", "Pioneer", "Horizon", "Synergy", "Elevate",
+        "True", "Core", "Spark", "Forge", "Blend", "Rise", "Stride", "Clarity", "Momentum", "Balance",
     ]
-    
-    roofing_suffixes = ["Roofing", "Roofing Co", "Roofing Solutions", "Roof Pros", "Roofing & Restoration", "Roofing Services", "Roofing Experts"]
+    business_types = [
+        "Marketing Agency", "Dental Care", "Fitness Studio", "Legal Group", "Tech Solutions", "Retail Co",
+        "Coffee Roasters", "Beauty Salon", "Consulting", "Realty Team", "Auto Repair", "Wellness Center",
+        "Language School", "Financial Advisors", "Design Studio", "Restaurant Group", "IT Services",
+        "Construction", "Pharmacy", "Photography", "Events Co", "SaaS Startup", "Coaching Practice",
+        "Landscaping", "Pet Services", "Bakery Chain", "Hotel Group", "Logistics", "Manufacturing",
+    ]
     
     statuses = ["New Lead", "Contacted", "Replied", "Interested", "Qualified", "Booked", "No Response", "Not Interested", "Closed Won", "Closed Lost"]
     status_weights = [15, 12, 10, 8, 6, 5, 20, 8, 10, 6]
@@ -2405,7 +2410,7 @@ async def seed_demo_data():
     leads = []
     for i in range(60):
         city, state = random.choice(locations)
-        company = f"{random.choice(roofing_names)} {random.choice(roofing_suffixes)}"
+        company = f"{random.choice(business_prefixes)} {random.choice(business_types)}"
         first_names = ["John", "Mike", "David", "James", "Robert", "William", "Chris", "Tom", "Steve", "Dan", "Mark", "Paul", "Joe", "Brian", "Kevin", "Jason", "Matt", "Eric", "Jeff", "Tim"]
         last_names = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Martinez", "Anderson", "Wilson", "Moore", "Taylor", "Thomas", "Jackson", "White", "Harris", "Martin", "Thompson", "Robinson"]
         contact = f"{random.choice(first_names)} {random.choice(last_names)}"
@@ -2427,11 +2432,11 @@ async def seed_demo_data():
             "email": f"{contact.lower().replace(' ', '.')}@{company.lower().replace(' ', '').replace('&', '')[:15]}.com",
             "city": city,
             "state": state,
-            "website": f"https://www.{company.lower().replace(' ', '').replace('&', '')}roofing.com",
+            "website": f"https://www.{company.lower().replace(' ', '').replace('&', '')[:28]}.example",
             "instagram_handle": f"@{company.lower().replace(' ', '_')[:20]}" if platform == "Instagram" else None,
             "facebook_page": f"{company}" if platform == "Facebook Groups" else None,
             "source_platform": platform,
-            "source_detail": f"{'DM outreach' if platform == 'Instagram' else 'Group: Roofing Contractors USA'}",
+            "source_detail": f"{'DM outreach' if platform == 'Instagram' else 'Group: Small Business Network'}",
             "status": status,
             "priority": priority,
             "notes": None,
@@ -2459,7 +2464,7 @@ async def seed_demo_data():
             "date_contacted": lead["created_at"],
             "follow_status": random.choice(["followed", "not_followed", "followed_back"]),
             "liked_posts_count": random.randint(0, 5),
-            "first_dm_sent": "Hey! Love your roofing work. Are you using AI to handle your calls?" if lead["status"] != "New Lead" else None,
+            "first_dm_sent": "Hey! Love what you're building. Are you using AI to handle incoming calls?" if lead["status"] != "New Lead" else None,
             "last_reply": "Thanks! Tell me more about what you offer" if lead["status"] in ["Replied", "Interested", "Qualified", "Booked", "Closed Won"] else None,
             "conversation_status": "replied" if lead["status"] in ["Replied", "Interested", "Qualified", "Booked", "Closed Won"] else "dm_sent" if lead["status"] == "Contacted" else "not_started",
             "notes": None,
@@ -2472,9 +2477,9 @@ async def seed_demo_data():
     
     # Seed Facebook Groups outreach records
     fb_groups = [
-        "Roofing Contractors USA", "Storm Restoration Pros", "Roofing Business Growth", 
-        "Home Service Contractors Network", "Roofing Sales Mastermind", "Contractor Marketing Tips",
-        "Roofing Leads & Sales", "Home Improvement Pros", "Storm Chasers Network"
+        "Small Business Owners Network", "Entrepreneur Community", "Local Business Growth",
+        "Digital Marketing Tips", "SMB Leaders Hub", "Startup Founders", "E-commerce Sellers",
+        "Service Business Owners", "B2B Sales Professionals", "Women in Business",
     ]
     fb_records = []
     for _ in range(25):
@@ -2491,7 +2496,7 @@ async def seed_demo_data():
             "group_name": group,
             "post_link": f"https://facebook.com/groups/{group.lower().replace(' ', '')}/posts/{random.randint(1000000, 9999999)}",
             "post_type": random.choice(["engagement", "value_post", "comment", "reply"]),
-            "comment_made": "Great question! AI receptionists are game-changers for roofing companies. Happy to share what we've learned." if random.random() > 0.5 else None,
+            "comment_made": "Great question! AI receptionists help all kinds of businesses capture leads 24/7. Happy to share what we've seen work." if random.random() > 0.5 else None,
             "people_engaged": [f"User{i}" for i in random.sample(range(1, 50), random.randint(0, 5))],
             "person_followed_up": linked_lead["contact_name"] if linked_lead else None,
             "follow_up_method": random.choice(["DM", "Comment reply", "Friend request"]) if linked_lead else None,
@@ -2506,14 +2511,14 @@ async def seed_demo_data():
     
     # Seed message templates
     templates = [
-        {"name": "First Contact - Instagram", "category": "first_contact", "platform": "Instagram", "content": "Hey {contact_name}! I came across {company_name} and love what you're doing in {city}. Quick question - are you currently using any AI or automation to handle your incoming calls and leads?", "variables": ["contact_name", "company_name", "city"]},
-        {"name": "First Contact - FB Group", "category": "first_contact", "platform": "Facebook Groups", "content": "Hi {contact_name}, saw your post in the group and it resonated. We help roofing companies like yours capture more leads with AI receptionists. Would love to share how it works if you're interested!", "variables": ["contact_name"]},
-        {"name": "Follow-up - No Response", "category": "follow_up", "platform": "Instagram", "content": "Hey {contact_name}, just circling back on my last message. Would love to show you how our AI receptionist can help {company_name} never miss another lead. Got 5 minutes this week?", "variables": ["contact_name", "company_name"]},
-        {"name": "Follow-up - Interested", "category": "interested_lead", "platform": "Instagram", "content": "Awesome to hear you're interested, {contact_name}! Here's a quick link to book a demo: [CALENDAR_LINK]. Looking forward to showing you how this can work for {company_name}.", "variables": ["contact_name", "company_name"]},
-        {"name": "Booked - Confirmation", "category": "booked_lead", "platform": "Instagram", "content": "Perfect, {contact_name}! Just confirming our call on [DATE]. I'll be showing you exactly how our AI receptionist can help {company_name} capture and qualify more roofing leads 24/7. Talk soon!", "variables": ["contact_name", "company_name"]},
-        {"name": "Reactivation", "category": "reactivation", "platform": "Instagram", "content": "Hey {contact_name}! It's been a while since we chatted. We've added some cool new features to our AI receptionist that I think would be perfect for {company_name}. Want to take another look?", "variables": ["contact_name", "company_name"]},
-        {"name": "FB Group Comment", "category": "first_contact", "platform": "Facebook Groups", "content": "Great question! We've helped dozens of roofing companies solve this exact problem with AI. Happy to share what's been working - shoot me a DM if you'd like the details.", "variables": []},
-        {"name": "FB Group Reply", "category": "follow_up", "platform": "Facebook Groups", "content": "Thanks for reaching out! For {company_name}, I'd recommend starting with our AI receptionist that handles calls 24/7. Want me to send over a quick video demo?", "variables": ["company_name"]}
+        {"name": "First Contact - Instagram", "category": "first_contact", "platform": "Instagram", "content": "Hey {contact_name}! I came across {company_name} in {city} — great work. Quick question: are you using any AI or automation today to handle incoming calls and leads?", "variables": ["contact_name", "company_name", "city"]},
+        {"name": "First Contact - FB Group", "category": "first_contact", "platform": "Facebook Groups", "content": "Hi {contact_name}, your post in the group resonated. We help businesses like yours capture and qualify more leads with AI receptionists. Happy to share how it works if you're curious.", "variables": ["contact_name"]},
+        {"name": "Follow-up - No Response", "category": "follow_up", "platform": "Instagram", "content": "Hey {contact_name}, following up on my last message. I'd love to show how an AI receptionist can help {company_name} stop missing leads. Do you have a few minutes this week?", "variables": ["contact_name", "company_name"]},
+        {"name": "Follow-up - Interested", "category": "interested_lead", "platform": "Instagram", "content": "Great to hear you're interested, {contact_name}! Here's a link to book a quick call: [CALENDAR_LINK]. Excited to walk through what this could look like for {company_name}.", "variables": ["contact_name", "company_name"]},
+        {"name": "Booked - Confirmation", "category": "booked_lead", "platform": "Instagram", "content": "Perfect, {contact_name}! Confirming our meeting on [DATE]. I'll show how our AI receptionist can help {company_name} capture and qualify leads around the clock. Talk soon!", "variables": ["contact_name", "company_name"]},
+        {"name": "Reactivation", "category": "reactivation", "platform": "Instagram", "content": "Hey {contact_name}! It's been a while. We've shipped new features for our AI receptionist that could be a fit for {company_name}. Want a quick refresher?", "variables": ["contact_name", "company_name"]},
+        {"name": "FB Group Comment", "category": "first_contact", "platform": "Facebook Groups", "content": "Solid question! We've helped many businesses in different industries solve this with AI. Happy to share what's worked — DM me if you'd like the details.", "variables": []},
+        {"name": "FB Group Reply", "category": "follow_up", "platform": "Facebook Groups", "content": "Thanks for reaching out! For {company_name}, a good first step is an AI receptionist on your phone line 24/7. Want a short video overview?", "variables": ["company_name"]}
     ]
     for t in templates:
         t["id"] = str(uuid.uuid4())
@@ -2540,7 +2545,7 @@ async def seed_demo_data():
             "outcome": outcome,
             "qualified": outcome in ["answered", "booked"] and random.random() > 0.3,
             "booked": outcome == "booked",
-            "transcript_summary": f"Discussed AI receptionist services for {lead['company_name']}. {'Interested in demo.' if outcome in ['answered', 'booked'] else 'Left voicemail.'}" if outcome != "no_answer" else None,
+            "transcript_summary": f"Discussed AI receptionist for {lead['company_name']}. {'Interested in next steps.' if outcome in ['answered', 'booked'] else 'Left voicemail.'}" if outcome != "no_answer" else None,
             "recording_url": None,
             "score": random.choice(["bad", "average", "good"]),
             "created_at": call_date
@@ -2597,7 +2602,7 @@ async def seed_demo_data():
             "source": lead["source_platform"],
             "meeting_status": meeting_status,
             "outcome": outcome,
-            "notes": f"Demo call with {lead['contact_name']}",
+            "notes": f"Meeting with {lead['contact_name']}",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat()
         })
@@ -2612,7 +2617,7 @@ async def seed_demo_data():
         {"id": str(uuid.uuid4()), "name": "Google Calendar", "description": "Booking and scheduling sync", "status": "planned", "webhook_url": None, "icon": "Calendar"},
         {"id": str(uuid.uuid4()), "name": "Cal.com", "description": "Scheduling automation", "status": "planned", "webhook_url": None, "icon": "CalendarCheck"},
         {"id": str(uuid.uuid4()), "name": "Twilio", "description": "SMS and calling integration", "status": "planned", "webhook_url": None, "icon": "Phone"},
-        {"id": str(uuid.uuid4()), "name": "Retell AI", "description": "AI voice agent for calls", "status": "planned", "webhook_url": None, "icon": "Headphones"},
+        {"id": str(uuid.uuid4()), "name": "Vapi", "description": "Agente de voz IA (Vapi) — llamadas y webhooks al CRM", "status": "planned", "webhook_url": None, "icon": "Headphones"},
         {"id": str(uuid.uuid4()), "name": "OpenAI", "description": "AI-powered features", "status": "planned", "webhook_url": None, "icon": "Brain"}
     ]
     await db.automations.insert_many(automations)

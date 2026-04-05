@@ -350,7 +350,7 @@ app.post('/api/bookings/create-or-update', asyncHandler(async (req, res) => {
     bookingId = existing.id; action = 'updated';
   } else {
     bookingId = uuid();
-    await db.collection('bookings').doc(bookingId).set({ id: bookingId, lead_id: leadId, booking_date: data.booking_date, booking_source: bookingSource, source: bookingSource, booking_type: cleanStr(data.booking_type) || 'demo', meeting_status: status, calcom_event_id: cleanStr(data.calcom_event_id), meeting_url: cleanStr(data.meeting_url), notes: cleanStr(data.notes), outcome: null, created_at: ts, updated_at: ts });
+    await db.collection('bookings').doc(bookingId).set({ id: bookingId, lead_id: leadId, booking_date: data.booking_date, booking_source: bookingSource, source: bookingSource, booking_type: cleanStr(data.booking_type) || 'meeting', meeting_status: status, calcom_event_id: cleanStr(data.calcom_event_id), meeting_url: cleanStr(data.meeting_url), notes: cleanStr(data.notes), outcome: null, created_at: ts, updated_at: ts });
     action = 'created';
   }
   if (status !== 'cancelled' && !['Closed Won', 'Closed Lost'].includes(lead.status)) {
@@ -961,7 +961,7 @@ app.post('/api/external/bookings/create-or-update', asyncHandler(async (req, res
     bookingId = existing.id; action = 'updated';
   } else {
     bookingId = uuid();
-    await db.collection('bookings').doc(bookingId).set({ id: bookingId, lead_id: data.lead_id, booking_date: data.booking_date, booking_source: data.booking_source, source: data.booking_source, booking_type: data.booking_type || 'demo', meeting_status: data.status || 'scheduled', calcom_event_id: data.calcom_event_id, meeting_url: data.meeting_url, notes: data.notes, outcome: null, created_at: ts, updated_at: ts });
+    await db.collection('bookings').doc(bookingId).set({ id: bookingId, lead_id: data.lead_id, booking_date: data.booking_date, booking_source: data.booking_source, source: data.booking_source, booking_type: data.booking_type || 'meeting', meeting_status: data.status || 'scheduled', calcom_event_id: data.calcom_event_id, meeting_url: data.meeting_url, notes: data.notes, outcome: null, created_at: ts, updated_at: ts });
     action = 'created';
   }
   if (data.status !== 'cancelled') await db.collection('leads').doc(data.lead_id).update({ status: 'Booked', updated_at: ts });
@@ -979,7 +979,7 @@ app.post('/api/external/calls/log', asyncHandler(async (req, res) => {
   const leadsSnap = await db.collection('leads').get();
   const matchedLead = leadsSnap.docs.map(d => d.data()).find(l => l.phone && normalizePhone(l.phone) === normPhone) || null;
   const callId = uuid();
-  const callDoc = { id: callId, lead_id: matchedLead?.id || null, caller_phone: data.phone, company_name: matchedLead?.company_name || null, direction: data.direction, call_date: data.call_date, duration_seconds: data.duration_seconds || 0, outcome: data.booked ? 'booked' : data.qualified ? 'qualified' : 'answered', qualified: data.qualified || false, booked: data.booked || false, transcript_summary: data.transcript_summary, recording_url: data.recording_url, retell_call_id: data.retell_call_id, notes: data.notes, score: data.booked ? 'good' : 'average', created_at: ts };
+  const callDoc = { id: callId, lead_id: matchedLead?.id || null, caller_phone: data.phone, company_name: matchedLead?.company_name || null, direction: data.direction, call_date: data.call_date, duration_seconds: data.duration_seconds || 0, outcome: data.booked ? 'booked' : data.qualified ? 'qualified' : 'answered', qualified: data.qualified || false, booked: data.booked || false, transcript_summary: data.transcript_summary, recording_url: data.recording_url, vapi_call_id: data.vapi_call_id || null, notes: data.notes, score: data.booked ? 'good' : 'average', created_at: ts };
   await db.collection('calls').doc(callId).set(callDoc);
   if (matchedLead) {
     const leadUpd = { last_contact_date: ts, updated_at: ts };

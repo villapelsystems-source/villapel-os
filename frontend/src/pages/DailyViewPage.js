@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { useLanguage } from '../lib/LanguageContext';
 import { useToast } from '../lib/ToastContext';
 import {
   ChevronLeft,
@@ -25,18 +26,6 @@ function shiftDay(ymd, delta) {
   return toLocalYMD(dt);
 }
 
-const KIND_LABEL = {
-  lead: 'Lead',
-  call: 'Call',
-  booking: 'Booking',
-  task: 'Task',
-};
-
-const SUBTYPE_LABEL = {
-  created: 'Nuevo',
-  updated: 'Actualizado',
-};
-
 const KIND_BADGE = {
   lead: 'bg-blue-500/12 text-blue-300 border-blue-500/25',
   call: 'bg-violet-500/12 text-violet-300 border-violet-500/25',
@@ -44,22 +33,8 @@ const KIND_BADGE = {
   task: 'bg-amber-500/12 text-amber-300 border-amber-500/25',
 };
 
-function kindSubLabel(item) {
-  if (item.kind !== 'lead') return '';
-  return SUBTYPE_LABEL[item.activity_subtype] || item.activity_subtype || '';
-}
-
-function KindBadge({ kind }) {
-  const label = KIND_LABEL[kind] || kind;
-  const cls = KIND_BADGE[kind] || 'bg-white/5 text-white/60 border-white/10';
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wide border ${cls}`}>
-      {label}
-    </span>
-  );
-}
-
 export default function DailyViewPage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [selectedDate, setSelectedDate] = useState(() => toLocalYMD(new Date()));
@@ -76,17 +51,28 @@ export default function DailyViewPage() {
       const data = await api.getDayActivity(selectedDate);
       setItems(data.items || []);
     } catch (e) {
-      setError(e.message || 'Could not load day');
+      const msg = e.message || t('daily.loadErr');
+      setError(msg);
       setItems([]);
-      showToast(e.message || 'Could not load day', 'error');
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, showToast]);
+  }, [selectedDate, showToast, t]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const kindLabel = useCallback((kind) => t(`daily.kind.${kind}`) || kind, [t]);
+
+  const kindSubLabel = useCallback((item) => {
+    if (item.kind !== 'lead') return '';
+    const sub = item.activity_subtype;
+    if (sub === 'created') return t('daily.subtype.created');
+    if (sub === 'updated') return t('daily.subtype.updated');
+    return sub || '';
+  }, [t]);
 
   const filtered = useMemo(() => {
     let list = items;
@@ -94,21 +80,22 @@ export default function DailyViewPage() {
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter((i) => {
-        const blob = [
-          i.contact_label,
-          i.summary,
-          i.platform,
-          i.status,
-          KIND_LABEL[i.kind],
-          kindSubLabel(i),
-        ]
-          .join(' ')
-          .toLowerCase();
+        const blob = [i.contact_label, i.summary, i.platform, i.status, kindLabel(i.kind), kindSubLabel(i)].join(' ').toLowerCase();
         return blob.includes(q);
       });
     }
     return list;
-  }, [items, tab, search]);
+  }, [items, tab, search, kindLabel, kindSubLabel]);
+
+  function KindBadge({ kind }) {
+    const label = kindLabel(kind);
+    const cls = KIND_BADGE[kind] || 'bg-white/5 text-white/60 border-white/10';
+    return (
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wide border ${cls}`}>
+        {label}
+      </span>
+    );
+  }
 
   const isToday = selectedDate === toLocalYMD(new Date());
 
@@ -126,13 +113,16 @@ export default function DailyViewPage() {
     navigate(row.detail_route || '/');
   };
 
-  const tabs = [
-    { id: 'all', label: 'All' },
-    { id: 'lead', label: 'Leads' },
-    { id: 'call', label: 'Calls' },
-    { id: 'booking', label: 'Bookings' },
-    { id: 'task', label: 'Tasks' },
-  ];
+  const tabs = useMemo(
+    () => [
+      { id: 'all', label: t('daily.tab.all') },
+      { id: 'lead', label: t('daily.tab.lead') },
+      { id: 'call', label: t('daily.tab.call') },
+      { id: 'booking', label: t('daily.tab.booking') },
+      { id: 'task', label: t('daily.tab.task') },
+    ],
+    [t]
+  );
 
   return (
     <div className="space-y-5">
@@ -142,8 +132,8 @@ export default function DailyViewPage() {
             <LayoutList size={20} className="text-accent" strokeWidth={2} />
           </div>
           <div>
-            <h1 className="font-heading font-bold text-2xl tracking-tight text-white">Daily view</h1>
-            <p className="text-sm text-white/45 mt-0.5">Pipeline del día · UTC en servidor</p>
+            <h1 className="font-heading font-bold text-2xl tracking-tight text-white">{t('daily.title')}</h1>
+            <p className="text-sm text-white/45 mt-0.5">{t('daily.subtitle')}</p>
           </div>
         </div>
       </div>
@@ -157,14 +147,14 @@ export default function DailyViewPage() {
                 type="button"
                 onClick={() => setSelectedDate((d) => shiftDay(d, -1))}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/[0.05] text-white/75 hover:text-white hover:bg-white/[0.1] hover:border-white/20 active:scale-[0.96] transition-all duration-200"
-                aria-label="Día anterior"
+                aria-label={t('daily.prev')}
               >
                 <ChevronLeft className="w-5 h-5" strokeWidth={2.25} />
               </button>
 
               <div className="flex-1 min-w-0 text-center px-2">
                 <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-white/38 font-semibold">
-                  Fecha seleccionada
+                  {t('daily.selectedDate')}
                 </p>
                 <p className="font-heading text-lg sm:text-2xl font-bold text-white mt-1 capitalize tracking-tight leading-snug">
                   {headerDate}
@@ -176,7 +166,7 @@ export default function DailyViewPage() {
                 type="button"
                 onClick={() => setSelectedDate((d) => shiftDay(d, 1))}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/[0.05] text-white/75 hover:text-white hover:bg-white/[0.1] hover:border-white/20 active:scale-[0.96] transition-all duration-200"
-                aria-label="Día siguiente"
+                aria-label={t('daily.next')}
               >
                 <ChevronRight className="w-5 h-5" strokeWidth={2.25} />
               </button>
@@ -192,7 +182,7 @@ export default function DailyViewPage() {
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-950/50 hover:bg-accent-hover disabled:opacity-35 disabled:shadow-none disabled:pointer-events-none transition-all duration-200 w-full sm:w-auto min-h-[44px]"
               >
                 <CalendarDays size={18} strokeWidth={2} className="opacity-95" />
-                Today
+                {t('daily.today')}
               </button>
             </div>
           </div>
@@ -201,18 +191,18 @@ export default function DailyViewPage() {
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/10 w-fit max-w-full">
-        {tabs.map((t) => (
+        {tabs.map((tabItem) => (
           <button
-            key={t.id}
+            key={tabItem.id}
             type="button"
-            onClick={() => setTab(t.id)}
+            onClick={() => setTab(tabItem.id)}
             className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              tab === t.id
+              tab === tabItem.id
                 ? 'bg-white/[0.12] text-white shadow-sm border border-white/10'
                 : 'text-white/45 hover:text-white/75 border border-transparent'
             }`}
           >
-            {t.label}
+            {tabItem.label}
           </button>
         ))}
       </div>
@@ -223,7 +213,7 @@ export default function DailyViewPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar en el día…"
+          placeholder={t('daily.searchPh')}
           className="w-full bg-surface border border-white/10 rounded-xl pl-10 pr-3 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-accent/80 focus:ring-1 focus:ring-accent/50 transition-colors"
         />
       </div>
@@ -235,17 +225,15 @@ export default function DailyViewPage() {
       {loading ? (
         <div className="rounded-xl border border-white/10 bg-surface py-16 text-center">
           <div className="inline-block h-8 w-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-          <p className="text-sm text-white/45 mt-4">Cargando actividad…</p>
+          <p className="text-sm text-white/45 mt-4">{t('daily.loading')}</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-white/12 bg-surface/80 px-6 py-16 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.05] border border-white/10 mb-4">
             <CalendarDays className="text-white/25" size={28} strokeWidth={1.5} />
           </div>
-          <p className="text-white/80 font-heading font-semibold">Sin actividad este día</p>
-          <p className="text-sm text-white/40 mt-2 max-w-md mx-auto leading-relaxed">
-            Cambia la fecha, prueba otra pestaña o limpia el buscador.
-          </p>
+          <p className="text-white/80 font-heading font-semibold">{t('daily.emptyTitle')}</p>
+          <p className="text-sm text-white/40 mt-2 max-w-md mx-auto leading-relaxed">{t('daily.emptyHint')}</p>
         </div>
       ) : (
         <div className="rounded-xl border border-white/10 bg-surface overflow-hidden shadow-lg shadow-black/30">
@@ -254,12 +242,12 @@ export default function DailyViewPage() {
               <thead>
                 <tr className="bg-[#0a0a0c] border-b border-white/10">
                   {[
-                    { k: 'Hora', w: '' },
-                    { k: 'Tipo', w: '' },
-                    { k: 'Contacto / empresa', w: '' },
-                    { k: 'Plataforma', w: '' },
-                    { k: 'Estado', w: '' },
-                    { k: 'Resumen', w: '' },
+                    { k: t('daily.col.time'), w: '' },
+                    { k: t('daily.col.type'), w: '' },
+                    { k: t('daily.col.contact'), w: '' },
+                    { k: t('daily.col.platform'), w: '' },
+                    { k: t('daily.col.status'), w: '' },
+                    { k: t('daily.col.summary'), w: '' },
                     { k: '', w: 'w-px' },
                   ].map((col) => (
                     <th
@@ -324,8 +312,8 @@ export default function DailyViewPage() {
                     </td>
                     <td className="px-4 py-3.5 align-middle text-right">
                       <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent/70 group-hover/row:text-accent transition-colors">
-                        <span className="hidden sm:inline">Abrir detalle</span>
-                        <span className="sm:hidden">Abrir</span>
+                        <span className="hidden sm:inline">{t('daily.openDetail')}</span>
+                        <span className="sm:hidden">{t('daily.openShort')}</span>
                         <ArrowUpRight size={16} strokeWidth={2.25} className="opacity-80 group-hover/row:translate-x-0.5 group-hover/row:-translate-y-0.5 transition-transform" />
                       </span>
                     </td>
@@ -339,7 +327,7 @@ export default function DailyViewPage() {
 
       {!loading && filtered.length > 0 && (
         <p className="text-xs text-white/30 font-medium">
-          {filtered.length} registro{filtered.length !== 1 ? 's' : ''} · Clic en fila o Enter para abrir
+          {t('daily.footer', { count: filtered.length })}
         </p>
       )}
     </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { ToastProvider } from './lib/ToastContext';
+import { LanguageProvider, useLanguage } from './lib/LanguageContext';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -18,14 +19,16 @@ import DailyViewPage from './pages/DailyViewPage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen bg-[#09090B]"><div className="text-white/60">Loading...</div></div>;
+  const { t } = useLanguage();
+  if (loading) return <div className="flex items-center justify-center h-screen bg-[#09090B]"><div className="text-white/60">{t('app.loading')}</div></div>;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
 function AppRoutes() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen bg-[#09090B]"><div className="text-white/60">Loading...</div></div>;
+  const { t } = useLanguage();
+  if (loading) return <div className="flex items-center justify-center h-screen bg-[#09090B]"><div className="text-white/60">{t('app.loading')}</div></div>;
 
   return (
     <Routes>
@@ -50,12 +53,14 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ToastProvider>
-          <AppRoutes />
-        </ToastProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </LanguageProvider>
   );
 }
