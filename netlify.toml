@@ -1,22 +1,20 @@
-# Deploy desde la raíz del repo: el sitio vive en /frontend
+# Deploy desde la raíz del repo. Sin `base`: publish y functions son rutas claras desde la raíz.
 # https://docs.netlify.com/configure-builds/file-based-configuration/
 
 [build]
-  base = "frontend"
-  command = "npm ci && npm run build"
-  # Relativo a `base` (frontend/), no a la raíz del repo
-  publish = "build"
+  command = "cd frontend && npm ci && npm run build"
+  publish = "frontend/build"
 
 [build.environment]
   NODE_VERSION = "20"
+  # Netlify define CI=true; webpack a veces trata warnings como error. Desactiva ESLint en el bundle de prod (el IDE sigue pudiendo lintear).
+  DISABLE_ESLINT_PLUGIN = "true"
+  # Evita fallos por límites de memoria al empaquetar funciones grandes (api + firebase-admin)
+  NODE_OPTIONS = "--max-old-space-size=4096"
 
-# Funciones en frontend/netlify/functions (api.js = Express + Firestore; leads*.js = JSON temporal)
 [functions]
-  # Relativo a `base` → frontend/netlify/functions
-  directory = "netlify/functions"
+  directory = "frontend/netlify/functions"
 
-# JSON test API (Make.com puede usar /.netlify/functions/leads-intake directo)
-# No usamos /api/* -> :splat porque rompería /api/auth/*, /api/leads/:id, /api/dashboard/metrics, etc.
 [[redirects]]
   from = "/api/json/leads"
   to = "/.netlify/functions/leads"
@@ -27,13 +25,11 @@
   to = "/.netlify/functions/metrics"
   status = 200
 
-# App principal (JWT, Firestore, CRM)
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api"
   status = 200
 
-# SPA (después de API)
 [[redirects]]
   from = "/*"
   to = "/index.html"

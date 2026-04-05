@@ -9,13 +9,13 @@ CRM y operación de leads con soporte de **cualquier tipo de negocio** (servicio
 
 ## Despliegue en Netlify
 
-El archivo [`netlify.toml`](netlify.toml) en la **raíz del repo** define `base = "frontend"`, el build y las funciones en `frontend/netlify/functions`. No hace falta un `netlify.toml` dentro de `frontend/`.
+El archivo [`netlify.toml`](netlify.toml) en la **raíz del repo** define el comando de build (`cd frontend && …`), `publish = "frontend/build"` y las funciones en `frontend/netlify/functions`. En el panel de Netlify deja **Base directory vacío** (raíz del repo) para que coincida con el toml.
 
 1. **Sube el código** a GitHub (o GitLab/Bitbucket) y conecta el repo en [Netlify](https://app.netlify.com) → *Add new site* → *Import an existing project*.
 2. **Configuración del build** (normalmente se detecta sola gracias a `netlify.toml`):
-   - *Base directory:* `frontend` (ya va en el toml)
-   - *Build command:* `npm ci && npm run build`
-   - *Publish directory:* `build` (relativo al *base* `frontend/`, es decir `frontend/build` en disco; no uses `frontend/build` en el campo de publicación si el base ya es `frontend`)
+   - *Base directory:* vacío (raíz del repositorio)
+   - *Build command:* `cd frontend && npm ci && npm run build`
+   - *Publish directory:* `frontend/build`
 3. **Variables de entorno** en el sitio → *Site configuration* → *Environment variables* (mínimo para la API serverless + Firestore):
    - `FIREBASE_SERVICE_ACCOUNT` — JSON completo de la cuenta de servicio de Firebase, en **una sola línea** (el contenido del archivo JSON, sin saltos de línea, o escapado como string).
    - `JWT_SECRET` — cadena larga y aleatoria (no uses el valor por defecto).
