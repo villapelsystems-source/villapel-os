@@ -40,7 +40,6 @@ export default function LeadsPage() {
   async function fetchLeads() {
     try {
       const res = await api.getLeadsList();
-      console.log('[CRM leads] fetched response', res);
       if (res.success) {
         setAllLeads(res.leads || []);
       }
