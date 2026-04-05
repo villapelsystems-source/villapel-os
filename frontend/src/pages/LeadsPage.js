@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -24,8 +24,7 @@ function Badge({ status }) {
 }
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState([]);
-  const [total, setTotal] = useState(0);
+  const [allLeads, setAllLeads] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [platformFilter, setPlatformFilter] = useState('');
@@ -38,21 +37,42 @@ export default function LeadsPage() {
   const { showToast } = useToast();
   const limit = 25;
 
-  const load = useCallback(async () => {
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (statusFilter) params.set('status', statusFilter);
-    if (platformFilter) params.set('source_platform', platformFilter);
-    params.set('skip', page * limit);
-    params.set('limit', limit);
+  async function fetchLeads() {
     try {
-      const data = await api.getLeads(params.toString());
-      setLeads(data.leads || []);
-      setTotal(data.total || 0);
-    } catch {}
-  }, [search, statusFilter, platformFilter, page]);
+      const res = await api.getLeadsList();
+      console.log('[CRM leads] fetched response', res);
+      if (res.success) {
+        setAllLeads(res.leads || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch leads', err);
+    }
+  }
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  const { leads, total } = useMemo(() => {
+    let list = [...allLeads];
+    if (statusFilter) list = list.filter((l) => l.status === statusFilter);
+    if (platformFilter) list = list.filter((l) => l.source_platform === platformFilter);
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (l) =>
+          (l.company_name || '').toLowerCase().includes(q) ||
+          (l.contact_name || '').toLowerCase().includes(q) ||
+          (l.phone || '').toLowerCase().includes(q) ||
+          (l.email || '').toLowerCase().includes(q) ||
+          (l.city || '').toLowerCase().includes(q)
+      );
+    }
+    list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    const totalCount = list.length;
+    const pageRows = list.slice(page * limit, page * limit + limit);
+    return { leads: pageRows, total: totalCount };
+  }, [allLeads, search, statusFilter, platformFilter, page, limit]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -60,7 +80,7 @@ export default function LeadsPage() {
       await api.createLead(form);
       setShowCreate(false);
       setForm({ company_name: '', contact_name: '', phone: '', email: '', city: '', state: '', source_platform: 'Instagram', status: 'New Lead', priority: 'medium' });
-      load();
+      fetchLeads();
     } catch {}
   };
 
@@ -69,8 +89,7 @@ export default function LeadsPage() {
     setDeleting(true);
     try {
       await api.deleteLead(confirmLead.id);
-      setLeads((prev) => prev.filter((l) => l.id !== confirmLead.id));
-      setTotal((t) => Math.max(0, t - 1));
+      setAllLeads((prev) => prev.filter((l) => l.id !== confirmLead.id));
       setConfirmLead(null);
       showToast('Lead eliminado correctamente');
     } catch (e) {
