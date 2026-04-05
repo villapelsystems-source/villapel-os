@@ -1,19 +1,19 @@
-# Deploy desde la raíz del repo. Sin `base`: publish y functions son rutas claras desde la raíz.
+# `base = "frontend"`: el build corre dentro de frontend/ (coincide con Base directory en Netlify).
+# No uses `cd frontend` en el command si el base ya es frontend.
 # https://docs.netlify.com/configure-builds/file-based-configuration/
 
 [build]
-  command = "cd frontend && npm ci && npm run build"
-  publish = "frontend/build"
+  base = "frontend"
+  command = "npm ci && npm run build"
+  publish = "build"
 
 [build.environment]
   NODE_VERSION = "20"
-  # Netlify define CI=true; webpack a veces trata warnings como error. Desactiva ESLint en el bundle de prod (el IDE sigue pudiendo lintear).
   DISABLE_ESLINT_PLUGIN = "true"
-  # Evita fallos por límites de memoria al empaquetar funciones grandes (api + firebase-admin)
   NODE_OPTIONS = "--max-old-space-size=4096"
 
 [functions]
-  directory = "frontend/netlify/functions"
+  directory = "netlify/functions"
 
 [[redirects]]
   from = "/api/json/leads"
