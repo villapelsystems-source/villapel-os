@@ -9,6 +9,8 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  # Netlify pone CI=true; CRA trata warnings de webpack como error y tumba el build.
+  CI = "false"
   DISABLE_ESLINT_PLUGIN = "true"
   NODE_OPTIONS = "--max-old-space-size=4096"
 

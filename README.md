@@ -31,3 +31,10 @@ netlify deploy --build --prod
 ```
 
 Si antes existía `memory/test_credentials.md` en el historial de Git con una contraseña de prueba, **cámbiala** en Netlify (`ADMIN_PASSWORD`) y en Firebase si aplica.
+
+### Si el deploy sigue en rojo
+
+1. **Último commit** del repo debe incluir `netlify.toml` con `base = "frontend"`, comando **`npm ci && npm run build`** (sin `cd frontend`) y en `[build.environment]` la variable **`CI = "false"`** (el propio Netlify fuerza `CI=true` y React puede fallar por warnings).
+2. En Netlify → *Deploys* → *Trigger deploy* → **Clear cache and deploy site**.
+3. En *Site configuration* → *Build & deploy* → *Build settings*: si pusiste a mano *Build command* o *Publish directory*, bórralos para que mande el `netlify.toml`, o deja *Base* = `frontend`, *Command* = `npm ci && npm run build`, *Publish* = `build`.
+4. Abre el **deploy log** completo, busca la primera línea en rojo con `Error` o `Failed` (el resumen “exit code 2” no dice el motivo); si sigue fallando, copia esas líneas para diagnosticar.
