@@ -15,7 +15,7 @@ El archivo [`netlify.toml`](netlify.toml) en la **raíz del repo** define `base 
 2. **Configuración del build** (normalmente se detecta sola gracias a `netlify.toml`):
    - *Base directory:* `frontend` (ya va en el toml)
    - *Build command:* `npm ci && npm run build`
-   - *Publish directory:* `frontend/build`
+   - *Publish directory:* `build` (relativo al *base* `frontend/`, es decir `frontend/build` en disco; no uses `frontend/build` en el campo de publicación si el base ya es `frontend`)
 3. **Variables de entorno** en el sitio → *Site configuration* → *Environment variables* (mínimo para la API serverless + Firestore):
    - `FIREBASE_SERVICE_ACCOUNT` — JSON completo de la cuenta de servicio de Firebase, en **una sola línea** (el contenido del archivo JSON, sin saltos de línea, o escapado como string).
    - `JWT_SECRET` — cadena larga y aleatoria (no uses el valor por defecto).

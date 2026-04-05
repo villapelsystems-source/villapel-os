@@ -4,14 +4,16 @@
 [build]
   base = "frontend"
   command = "npm ci && npm run build"
-  publish = "frontend/build"
+  # Relativo a `base` (frontend/), no a la raíz del repo
+  publish = "build"
 
 [build.environment]
   NODE_VERSION = "20"
 
 # Funciones en frontend/netlify/functions (api.js = Express + Firestore; leads*.js = JSON temporal)
 [functions]
-  directory = "frontend/netlify/functions"
+  # Relativo a `base` → frontend/netlify/functions
+  directory = "netlify/functions"
 
 # JSON test API (Make.com puede usar /.netlify/functions/leads-intake directo)
 # No usamos /api/* -> :splat porque rompería /api/auth/*, /api/leads/:id, /api/dashboard/metrics, etc.
