@@ -52,7 +52,8 @@ export const api = {
   metrics: () => request('/api/dashboard/metrics'),
   // Day activity
   getDayActivity: (date) => request(`/api/activity/day?date=${encodeURIComponent(date)}`),
-  // Leads
+  // Leads (Netlify function — shape { success, leads })
+  getLeadsList: () => request('/.netlify/functions/leads'),
   getLeads: (params = '') => request(`/api/leads${params ? '?' + params : ''}`),
   getLead: (id) => request(`/api/leads/${id}`),
   createLead: (data) => request('/api/leads', { method: 'POST', body: JSON.stringify(data) }),
